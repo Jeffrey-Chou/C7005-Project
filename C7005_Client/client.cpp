@@ -12,6 +12,7 @@ Client::Client(QWidget *parent) :
     ui->setupUi(this);
     loadConfig();
     connect(ui->pushButton_file, SIGNAL(clicked()), this, SLOT(loadFile()));
+    connect(ui->pushButton_send, SIGNAL(clicked()), this, SLOT(send()));
 }
 
 Client::~Client()
@@ -65,4 +66,43 @@ void Client::loadFile()
     }
     sendFile->setFileName(filename);
     ui->lineEdit_file->setText(filename);
+}
+
+void Client::send()
+{
+    int window;
+    QString hostIP, destIP;
+    short hostPort, destPort;
+    if(ui->lineEdit_window->text() == "")
+    {
+        qDebug() << "window not set";
+        return;
+    }
+    window = ui->lineEdit_window->text().toInt();
+
+    if(sendFile->fileName() == "")
+    {
+        qDebug() << "file not set";
+        return;
+    }
+    destIP = ui->lineEdit_net_ip_1->text();
+    if(ui->radioButton_mac1->isChecked())
+    {
+        hostIP = ui->lineEdit_mac01_ip->text();
+        hostPort = ui->lineEdit_mac01_port->text().toShort();
+        destPort = ui->lineEdit_net_port_1->text().toShort();
+    }
+    else
+    {
+        hostIP = ui->lineEdit_mac02_ip->text();
+        hostPort = ui->lineEdit_mac02_port->text().toShort();
+        destPort = ui->lineEdit_net_port_2->text().toShort();
+    }
+
+    qDebug() << "host ip and port:" << hostIP << ":" << hostPort;
+    qDebug() << "dest ip and port: " << destIP << ":" << destPort;
+    qDebug() << "window size: " << window;
+    qDebug() << "file to send: " << sendFile->fileName();
+
+
 }

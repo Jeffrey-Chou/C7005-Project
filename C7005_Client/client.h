@@ -18,6 +18,7 @@ public:
 
 public slots:
     void loadFile();
+    void send();
 
 private:
     Ui::Client *ui;
