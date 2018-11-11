@@ -13,6 +13,9 @@ Client::Client(QWidget *parent) :
     loadConfig();
     connect(ui->pushButton_file, SIGNAL(clicked()), this, SLOT(loadFile()));
     connect(ui->pushButton_send, SIGNAL(clicked()), this, SLOT(send()));
+    connect(ui->radioButton_mac1, SIGNAL(clicked()), this, SLOT(configureTransport()));
+    connect(ui->radioButton_mac2, SIGNAL(clicked()), this, SLOT(configureTransport()));
+    //connect(this, SIGNAL(readyToSend(QFile*)), transport, SLOT(send(QFile*)));
 }
 
 Client::~Client()
@@ -72,7 +75,7 @@ void Client::send()
 {
     int window;
     QString hostIP, destIP;
-    short hostPort, destPort;
+    unsigned short hostPort, destPort;
     if(ui->lineEdit_window->text() == "")
     {
         qDebug() << "window not set";
@@ -89,20 +92,39 @@ void Client::send()
     if(ui->radioButton_mac1->isChecked())
     {
         hostIP = ui->lineEdit_mac01_ip->text();
-        hostPort = ui->lineEdit_mac01_port->text().toShort();
-        destPort = ui->lineEdit_net_port_1->text().toShort();
+        hostPort = ui->lineEdit_mac01_port->text().toUShort();
+        destPort = ui->lineEdit_net_port_1->text().toUShort();
     }
     else
     {
         hostIP = ui->lineEdit_mac02_ip->text();
-        hostPort = ui->lineEdit_mac02_port->text().toShort();
-        destPort = ui->lineEdit_net_port_2->text().toShort();
+        hostPort = ui->lineEdit_mac02_port->text().toUShort();
+        destPort = ui->lineEdit_net_port_2->text().toUShort();
     }
 
     qDebug() << "host ip and port:" << hostIP << ":" << hostPort;
     qDebug() << "dest ip and port: " << destIP << ":" << destPort;
     qDebug() << "window size: " << window;
     qDebug() << "file to send: " << sendFile->fileName();
+    emit(readyToSend(sendFile));
 
+
+}
+
+void Client::configureTransport()
+{
+
+    delete transport;
+
+    if(ui->radioButton_mac1->isChecked())
+    {
+        transport = new Transport(ui->lineEdit_mac01_ip->text(), ui->lineEdit_mac01_port->text().toUShort(),
+                                  ui->lineEdit_mac02_ip->text(), ui->lineEdit_mac02_port->text().toUShort(),this);
+    }
+    if(ui->radioButton_mac2->isChecked())
+    {
+        transport = new Transport(ui->lineEdit_mac02_ip->text(), ui->lineEdit_mac02_port->text().toUShort(),
+                                  ui->lineEdit_mac01_ip->text(), ui->lineEdit_mac01_port->text().toUShort(), this);
+    }
 
 }
