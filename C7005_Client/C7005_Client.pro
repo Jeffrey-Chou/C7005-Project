@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui widgets
+QT       += core gui widgets network
 
 TARGET = C7005_Client
 TEMPLATE = app
@@ -24,10 +24,12 @@ CONFIG += c++11
 
 SOURCES += \
         main.cpp \
-        client.cpp
+        client.cpp \
+    transport.cpp
 
 HEADERS += \
-        client.h
+        client.h \
+    transport.h
 
 FORMS += \
         client.ui
