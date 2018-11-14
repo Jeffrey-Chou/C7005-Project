@@ -7,10 +7,12 @@
 Client::Client(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::Client),
-    sendFile(new QFile())
+    sendFile(new QFile()),
+    transport(nullptr)
 {
     ui->setupUi(this);
     loadConfig();
+    ui->lineEdit_window->setText("8");
     connect(ui->pushButton_file, SIGNAL(clicked()), this, SLOT(loadFile()));
     connect(ui->pushButton_send, SIGNAL(clicked()), this, SLOT(send()));
     connect(ui->radioButton_mac1, SIGNAL(clicked()), this, SLOT(configureTransport()));
@@ -113,18 +115,20 @@ void Client::send()
 
 void Client::configureTransport()
 {
-
-    delete transport;
+    if(transport)
+        delete transport;
 
     if(ui->radioButton_mac1->isChecked())
     {
         transport = new Transport(ui->lineEdit_mac01_ip->text(), ui->lineEdit_mac01_port->text().toUShort(),
-                                  ui->lineEdit_mac02_ip->text(), ui->lineEdit_mac02_port->text().toUShort(),this);
+                                  ui->lineEdit_mac02_ip->text(), ui->lineEdit_mac02_port->text().toUShort(),
+                                  ui->lineEdit_window->text().toUShort(), this);
     }
     if(ui->radioButton_mac2->isChecked())
     {
         transport = new Transport(ui->lineEdit_mac02_ip->text(), ui->lineEdit_mac02_port->text().toUShort(),
-                                  ui->lineEdit_mac01_ip->text(), ui->lineEdit_mac01_port->text().toUShort(), this);
+                                  ui->lineEdit_mac01_ip->text(), ui->lineEdit_mac01_port->text().toUShort(),
+                                  ui->lineEdit_window->text().toUShort(), this);
     }
 
 }

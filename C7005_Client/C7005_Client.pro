@@ -29,7 +29,8 @@ SOURCES += \
 
 HEADERS += \
         client.h \
-    transport.h
+    transport.h \
+    packet.h
 
 FORMS += \
         client.ui
