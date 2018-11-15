@@ -103,7 +103,7 @@ void Client::send()
         hostPort = ui->lineEdit_mac02_port->text().toUShort();
         destPort = ui->lineEdit_net_port_2->text().toUShort();
     }
-
+    sendFile->open(QIODevice::ReadOnly | QIODevice::Text);
     qDebug() << "host ip and port:" << hostIP << ":" << hostPort;
     qDebug() << "dest ip and port: " << destIP << ":" << destPort;
     qDebug() << "window size: " << window;

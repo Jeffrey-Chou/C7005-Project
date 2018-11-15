@@ -10,6 +10,8 @@
 
 #include "packet.h"
 
+#define TIMEOUT 3000
+
 class Transport : public QObject
 {
     Q_OBJECT
@@ -27,10 +29,14 @@ signals:
 public slots:
     void sendURGPack(QFile *file);
     void receiveURG();
+    void waitForURGResponse();
 
-    void waitForACK();
+    void sendPacket();
+    void sendNPackets();
+    void recvDataAck();
 
-    void sendNPackets(QFile *file);
+
+    void sendTimeOut();
 
 private:
     QUdpSocket *sock;
@@ -42,6 +48,11 @@ private:
 
     unsigned short windowSize;
     DataPacket **sendWindow, **windowStart, **windowEnd;
+
+    QFile *sendFile;
+    bool transferMode;
+
+    void retransmit();
 
 };
 
