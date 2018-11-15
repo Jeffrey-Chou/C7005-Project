@@ -1,7 +1,7 @@
 #ifndef PACKET_H
 #define PACKET_H
 
-#define PAYLOADLEN 16
+#define PAYLOADLEN 240
 #define HEADERLEN 16
 #define ACK 1
 #define DATA 2

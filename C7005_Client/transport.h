@@ -28,15 +28,16 @@ signals:
 
 public slots:
     void sendURGPack(QFile *file);
-    void receiveURG();
-    void waitForURGResponse();
-
+    void recvURG();
+    void recvURGResponse();
+    void recvData();
     void sendPacket();
     void sendNPackets();
     void recvDataAck();
 
 
     void sendTimeOut();
+    void recvTimeOut();
 
 private:
     QUdpSocket *sock;
@@ -53,6 +54,7 @@ private:
     bool transferMode;
 
     void retransmit();
+    int expectSeq;
 
 };
 
