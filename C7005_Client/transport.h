@@ -21,17 +21,18 @@ public:
                        QString destIP, unsigned short destPort, unsigned short windowSize, QObject *parent = nullptr);
     ~Transport();
 
-
+    void setFile(QFile * file);
 
 
 signals:
+    void beginContention();
 
 public slots:
-    void sendURGPack(QFile *file);
+    void sendURGPack(bool);
     void recvURG();
     void recvURGResponse();
     void recvData();
-    void sendPacket();
+    bool sendPacket();
     void sendNPackets();
     void recvDataAck();
 
@@ -39,12 +40,15 @@ public slots:
     void sendTimeOut();
     void recvTimeOut();
 
+    void contention();
+    void contentionTimeOut();
+
 private:
     QUdpSocket *sock;
     QHostAddress *destAddress;
     unsigned short destPort;
 
-    QTimer *sendTimer, *receiveTimer;
+    QTimer *sendTimer, *receiveTimer, *contendTimer;
     QQueue<QTime> timeQueue;
 
     unsigned short windowSize;

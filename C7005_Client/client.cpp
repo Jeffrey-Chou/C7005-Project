@@ -69,7 +69,13 @@ void Client::loadFile()
     {
         return;
     }
+    if(sendFile->isOpen())
+    {
+        sendFile->close();
+    }
     sendFile->setFileName(filename);
+    sendFile->open(QIODevice::ReadOnly | QIODevice::Text);
+    transport->setFile(sendFile);
     ui->lineEdit_file->setText(filename);
 }
 
@@ -103,12 +109,12 @@ void Client::send()
         hostPort = ui->lineEdit_mac02_port->text().toUShort();
         destPort = ui->lineEdit_net_port_2->text().toUShort();
     }
-    sendFile->open(QIODevice::ReadOnly | QIODevice::Text);
+    //sendFile->open(QIODevice::ReadOnly | QIODevice::Text);
     qDebug() << "host ip and port:" << hostIP << ":" << hostPort;
     qDebug() << "dest ip and port: " << destIP << ":" << destPort;
     qDebug() << "window size: " << window;
     qDebug() << "file to send: " << sendFile->fileName();
-    emit(readyToSend(sendFile));
+    emit(readyToSend(true));
 
 
 }

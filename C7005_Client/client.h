@@ -19,7 +19,7 @@ public:
     ~Client();
 
 signals:
-    void readyToSend(QFile *);
+    void readyToSend(bool);
 
 public slots:
     void loadFile();
