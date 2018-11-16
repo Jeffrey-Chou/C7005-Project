@@ -132,6 +132,7 @@ bool Transport::sendPacket()
     {
         DataPacket *data = new DataPacket;
         data->packetType = DATA;
+        memset(data->data, 0, PAYLOADLEN);
         data->seqNum = static_cast<int>(windowEnd - sendWindow);
         data->windowSize = windowSize;
         data->ackNum = 0;
@@ -333,6 +334,11 @@ void Transport::contentionTimeOut()
         if(!recvFile->isOpen())
         {
             qDebug() << "ready to close everything";
+            disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvData()));
+            disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvDataAck()));
+            connect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
+            receiveTimer->stop();
+            sendTimer->stop();
         }
     }
 }
