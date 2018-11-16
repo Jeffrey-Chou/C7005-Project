@@ -11,6 +11,7 @@ Transport::Transport(QString ip, unsigned short port, QString destIP, unsigned s
       windowSize(windowSize),
       sendWindow(nullptr),
       sendFile(nullptr),
+      recvFile(new QFile()),
       transferMode(false),
       expectSeq(0)
 
@@ -67,10 +68,6 @@ void Transport::sendURGPack(bool fromClient)
     {
         sendTimer->start(TIMEOUT);
     }
-    else
-    {
-        contendTimer->start(TIMEOUT);
-    }
     disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
     connect(sock, SIGNAL(readyRead()), this, SLOT(recvURGResponse()));
     qDebug() << "sending urg";
@@ -85,6 +82,16 @@ void Transport::recvURG()
         DataPacket* data = reinterpret_cast<DataPacket *>(buffer);
         if(data->packetType == URG)
         {
+            contendTimer->stop();
+            transferMode = false;
+            if(!recvFile->isOpen())
+            {
+                QString name(data->data);
+
+                recvFile->setFileName(name.insert(0,'1'));
+
+                recvFile->open(QIODevice::WriteOnly | QIODevice::Text);
+            }
             disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
             connect(sock, SIGNAL(readyRead()), this, SLOT(recvData()));
             ControlPacket ack;
@@ -165,9 +172,21 @@ void Transport::recvData()
         sock->readDatagram(buffer, PAYLOADLEN + HEADERLEN);
         DataPacket *data = reinterpret_cast<DataPacket *>(&buffer);
         qDebug() << "received seq: " << data->seqNum;
-        if(data->packetType == DATA && data->seqNum == expectSeq)
+
+        if(data->packetType == ACK)
+        {
+            disconnect(sock, SIGNAL(readyReady()), this, SLOT(recvData()));
+            connect(sock, SIGNAL(readyRead()), this, SLOT(recvDataAck()));
+            transferMode = true;
+            sendNPackets();
+            break;
+        }
+
+
+        if((data->packetType & DATA) == DATA && data->seqNum == expectSeq)
         {
             receiveTimer->stop();
+            recvFile->write(data->data, PAYLOADLEN);
             ControlPacket ack;
             ack.packetType = ACK;
             ack.ackNum = ++expectSeq;
@@ -175,12 +194,27 @@ void Transport::recvData()
             sock->writeDatagram(reinterpret_cast<char *>(&ack), sizeof(ControlPacket), *destAddress, destPort);
             if(expectSeq == data->windowSize)
             {
+                if((data->packetType & FIN) == FIN)
+                {
+                    recvFile->close();
+                }
                 expectSeq = 0;
                 emit(beginContention());
                 break;
             }
-            receiveTimer->start(TIMEOUT);
+            if((data->packetType & FIN) == FIN )
+            {
+                recvFile->close();
+                expectSeq = 0;
+                emit(beginContention());
+            }
+            else
+            {
+                receiveTimer->start(TIMEOUT);
+            }
         }
+
+
     }
 }
 
@@ -253,22 +287,25 @@ void Transport::retransmit()
 
 void Transport::contention()
 {
+    sendTimer->stop();
+    receiveTimer->stop();
     if(transferMode)
     {
         disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvDataAck()));
         connect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
-        contendTimer->start(2*TIMEOUT);
+        contendTimer->start(TIMEOUT + 1500);
     }
     else
     {
         //if receiver has data to send, send request
         //else wait for more data
+        disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvData()));
+        connect(sock, SIGNAL(readyRead()), this, SLOT(recvURGResponse()));
         if(sendFile != nullptr && !sendFile->atEnd())
         {
-            disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvData()));
-            connect(sock, SIGNAL(readyRead()), this, SLOT(recvURGResponse()));
             sendURGPack(false);
         }
+        contendTimer->start(TIMEOUT);
     }
 }
 
@@ -277,8 +314,25 @@ void Transport::contentionTimeOut()
     qDebug() << "contention timeout";
     if(transferMode)
     {
-        disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
-        connect(sock, SIGNAL(readyRead()), this, SLOT(recvDataAck()));
-        sendNPackets();
+        if(!sendFile->atEnd())
+        {
+            disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
+            connect(sock, SIGNAL(readyRead()), this, SLOT(recvDataAck()));
+            sendNPackets();
+        }
+    }
+    else
+    {
+        disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURGResponse()));
+        connect(sock, SIGNAL(readyRead()), this, SLOT(recvData()));
+        receiveTimer->start(TIMEOUT);
+    }
+
+    if(sendFile == nullptr || sendFile->atEnd())
+    {
+        if(!recvFile->isOpen())
+        {
+            qDebug() << "ready to close everything";
+        }
     }
 }

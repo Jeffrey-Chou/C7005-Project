@@ -54,7 +54,7 @@ private:
     unsigned short windowSize;
     DataPacket **sendWindow, **windowStart, **windowEnd;
 
-    QFile *sendFile;
+    QFile *sendFile, *recvFile;
     bool transferMode;
 
     void retransmit();
