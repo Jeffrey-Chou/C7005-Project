@@ -5,6 +5,11 @@
 #include <QFile>
 #include <QUdpSocket>
 
+#include <stdlib.h>
+#include <time.h>
+
+#define BUFFSIZE 512
+
 namespace Ui {
 class Network;
 }
@@ -17,9 +22,13 @@ public:
     explicit Network(QWidget *parent = nullptr);
     ~Network();
 
+    bool forwardPacket();
+
 public slots:
     void handleSliderChange(int);
     void listen();
+    void sendToMac01();
+    void sendToMac02();
 
 private:
     Ui::Network *ui;
@@ -27,9 +36,14 @@ private:
     QHostAddress mac01IP, mac02IP;
     unsigned short mac01Port, mac02Port;
 
+    char mac01Buffer[BUFFSIZE];
+    char mac02Buffer[BUFFSIZE];
+
     int errorRate;
 
     bool isListen;
+
+
 
 
     void loadConfig();
