@@ -223,10 +223,10 @@ void Transport::recvData()
 
 void Transport::recvDataAck()
 {
-    char buffer[HEADERLEN];
+    char buffer[HEADERLEN + PAYLOADLEN];
     while(sock->hasPendingDatagrams())
     {
-        sock->readDatagram(buffer, HEADERLEN);
+        sock->readDatagram(buffer, HEADERLEN + PAYLOADLEN);
         ControlPacket* con = reinterpret_cast<ControlPacket *>(buffer);
         qDebug() << "wating for ack " << (*windowStart)->seqNum+1;
         qDebug() << "       received ack " << con->ackNum;
@@ -267,6 +267,8 @@ void Transport::recvDataAck()
         }
 
 
+
+
     }
 }
 
@@ -285,7 +287,7 @@ void Transport::sendTimeOut()
 
 void Transport::recvTimeOut()
 {
-    qDebug() << "recv timeout";
+    qDebug() << "recv timeout sending ack" << expectSeq;
     ControlPacket ack;
     ack.packetType = ACK;
     ack.ackNum = expectSeq;
@@ -334,7 +336,8 @@ void Transport::contention()
         connect(sock, SIGNAL(readyRead()), this, SLOT(recvURGResponse()));
         if(sendFile != nullptr && !sendFile->atEnd())
         {
-            sendURGPack(false);
+            for(int i = 0; i < windowSize/2; ++i)
+                sendURGPack(false);
         }
         contendTimer->start(TIMEOUT);
     }
