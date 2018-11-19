@@ -58,7 +58,7 @@ private:
     bool transferMode;
 
     void retransmit();
-    int expectSeq;
+    int expectSeq, sendTOCount, recvTOCount;
 
 };
 

@@ -13,7 +13,9 @@ Transport::Transport(QString ip, unsigned short port, QString destIP, unsigned s
       sendFile(nullptr),
       recvFile(new QFile()),
       transferMode(false),
-      expectSeq(0)
+      expectSeq(0),
+      sendTOCount(0),
+      recvTOCount(0)
 
 {
     sock = new QUdpSocket(parent);
@@ -191,7 +193,7 @@ void Transport::recvData()
             ControlPacket ack;
             ack.packetType = ACK;
             ack.ackNum = ++expectSeq;
-            qDebug() << "expected seq: " << expectSeq;
+            qDebug() << "           expected seq: " << expectSeq;
             sock->writeDatagram(reinterpret_cast<char *>(&ack), sizeof(ControlPacket), *destAddress, destPort);
             if(expectSeq == data->windowSize)
             {
@@ -227,23 +229,41 @@ void Transport::recvDataAck()
         sock->readDatagram(buffer, HEADERLEN);
         ControlPacket* con = reinterpret_cast<ControlPacket *>(buffer);
         qDebug() << "wating for ack " << (*windowStart)->seqNum+1;
-        if(con->packetType == ACK && con->ackNum == (*windowStart)->seqNum+1)
+        qDebug() << "       received ack " << con->ackNum;
+        if(con->packetType == ACK )
         {
-            qDebug() << "in recvDataAck got " << con->ackNum;
-            sendTimer->stop();
-
-            delete *windowStart;
-            ++windowStart;
-            timeQueue.dequeue();
-            if(windowStart == windowEnd)
+            if(con->ackNum >= (*windowStart)->seqNum+1)
             {
-                // TODO add weird logic here
-                windowStart = windowEnd = sendWindow;
-                emit(beginContention());
-                break;
+                qDebug() << "in recvDataAck got " << con->ackNum;
+                sendTimer->stop();
+
+                delete *windowStart;
+                ++windowStart;
+                timeQueue.dequeue();
+                if(windowStart == windowEnd)
+                {
+                    // TODO add weird logic here
+                    windowStart = windowEnd = sendWindow;
+                    emit(beginContention());
+                    break;
+                }
+                sendPacket();
+                sendTimer->start(TIMEOUT - timeQueue.head().msecsTo(QTime::currentTime()));
             }
-            sendPacket();
-            sendTimer->start(TIMEOUT - timeQueue.head().msecsTo(QTime::currentTime()));
+            if(con->ackNum == 0 && windowEnd - sendWindow == windowSize)
+            {
+                sendTimer->stop();
+                timeQueue.clear();
+                int start = static_cast<int>(windowStart - sendWindow);
+                int end = static_cast<int>(windowEnd - sendWindow);
+                qDebug () << "retransmiting from:" << start << " to " << end;
+                for(int i = start; i < end; ++i)
+                {
+                    delete sendWindow[i];
+                }
+                windowStart = windowEnd = sendWindow;
+                sendNPackets();
+            }
         }
 
 
@@ -278,12 +298,22 @@ void Transport::retransmit()
     timeQueue.clear();
     int start = static_cast<int>(windowStart - sendWindow);
     int end = static_cast<int>(windowEnd - sendWindow);
-    for(int i = start; i <= end; ++i)
+    qDebug () << "retransmiting from:" << start << " to " << end;
+    for(int i = start; i < end; ++i)
     {
         sock->writeDatagram(reinterpret_cast<char *>(sendWindow[i]), sizeof(DataPacket), *destAddress, destPort);
         timeQueue.enqueue(QTime::currentTime());
     }
     sendTimer->start(TIMEOUT);
+    if(sendFile->atEnd())
+    {
+        ++sendTOCount;
+        if(sendTOCount > 5)
+        {
+            emit(beginContention());
+        }
+    }
+
 }
 
 void Transport::contention()

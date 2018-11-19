@@ -127,13 +127,13 @@ void Client::configureTransport()
     if(ui->radioButton_mac1->isChecked())
     {
         transport = new Transport(ui->lineEdit_mac01_ip->text(), ui->lineEdit_mac01_port->text().toUShort(),
-                                  ui->lineEdit_mac02_ip->text(), ui->lineEdit_mac02_port->text().toUShort(),
+                                  ui->lineEdit_net_ip_1->text(), ui->lineEdit_net_port_1->text().toUShort(),
                                   ui->lineEdit_window->text().toUShort(), this);
     }
     if(ui->radioButton_mac2->isChecked())
     {
         transport = new Transport(ui->lineEdit_mac02_ip->text(), ui->lineEdit_mac02_port->text().toUShort(),
-                                  ui->lineEdit_mac01_ip->text(), ui->lineEdit_mac01_port->text().toUShort(),
+                                  ui->lineEdit_net_ip_1->text(), ui->lineEdit_net_port_2->text().toUShort(),
                                   ui->lineEdit_window->text().toUShort(), this);
     }
 
