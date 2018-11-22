@@ -30,6 +30,7 @@ Transport::Transport(QString ip, unsigned short port, QString destIP, unsigned s
         //windowEnd = &sendWindow[windowSize/2];
         qDebug() << windowEnd - windowStart;
     }
+    //debug = new TransportDebug(windowSize, this);
     sendTimer->setSingleShot(true);
     receiveTimer->setSingleShot(true);
     contendTimer->setSingleShot(true);
@@ -66,6 +67,7 @@ void Transport::sendURGPack(bool fromClient)
     urgPack.windowSize = windowSize;
     memcpy(urgPack.data, qPrintable(filename), static_cast<size_t>(filename.size()));
     sock->writeDatagram(reinterpret_cast<char *>(&urgPack), sizeof(urgPack), *destAddress, destPort);
+    emit(packetSent(-1, URG));
     if(fromClient)
     {
         sendTimer->start(TIMEOUT);
@@ -146,9 +148,10 @@ bool Transport::sendPacket()
         }
         sock->writeDatagram(reinterpret_cast<char *>(data), sizeof(DataPacket), *destAddress, destPort);
         timeQueue.enqueue(QTime::currentTime());
+        emit(packetSent(static_cast<int>(windowEnd - sendWindow), data->packetType));
         *windowEnd++ = data;
 
-        qDebug() << "data: " << data->data;
+
     }
     return done;
 }
@@ -236,7 +239,7 @@ void Transport::recvDataAck()
             {
                 qDebug() << "in recvDataAck got " << con->ackNum;
                 sendTimer->stop();
-
+                emit(packetRecv(con->ackNum, ACK));
                 delete *windowStart;
                 ++windowStart;
                 timeQueue.dequeue();
@@ -262,6 +265,7 @@ void Transport::recvDataAck()
                     delete sendWindow[i];
                 }
                 windowStart = windowEnd = sendWindow;
+                emit(beginReset());
                 sendNPackets();
             }
         }
@@ -350,6 +354,7 @@ void Transport::contentionTimeOut()
     {
         if(!sendFile->atEnd())
         {
+            emit(beginReset());
             disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
             connect(sock, SIGNAL(readyRead()), this, SLOT(recvDataAck()));
             sendNPackets();

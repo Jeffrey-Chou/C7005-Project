@@ -25,15 +25,18 @@ CONFIG += c++11
 SOURCES += \
         main.cpp \
         client.cpp \
-    transport.cpp
+    transport.cpp \
+    transportdebug.cpp
 
 HEADERS += \
         client.h \
     transport.h \
-    packet.h
+    packet.h \
+    transportdebug.h
 
 FORMS += \
-        client.ui
+        client.ui \
+    transportdebug.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

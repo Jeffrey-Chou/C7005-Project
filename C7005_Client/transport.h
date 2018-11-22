@@ -8,7 +8,9 @@
 #include <QQueue>
 #include <QTime>
 
+
 #include "packet.h"
+
 
 #define TIMEOUT 3000
 
@@ -26,6 +28,9 @@ public:
 
 signals:
     void beginContention();
+    void packetSent(int,int);
+    void packetRecv(int,int);
+    void beginReset();
 
 public slots:
     void sendURGPack(bool);
@@ -59,6 +64,8 @@ private:
 
     void retransmit();
     int expectSeq, sendTOCount, recvTOCount;
+
+    //TransportDebug *debug;
 
 };
 
