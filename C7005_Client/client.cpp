@@ -97,6 +97,7 @@ void Client::send()
     if(sendFile->fileName() == "")
     {
         qDebug() << "file not set";
+        return;
 
     }
     destIP = ui->lineEdit_net_ip_1->text();
