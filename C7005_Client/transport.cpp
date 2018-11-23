@@ -13,6 +13,7 @@ Transport::Transport(QString ip, unsigned short port, QString destIP, unsigned s
       sendFile(nullptr),
       recvFile(new QFile()),
       transferMode(false),
+      sendingMachine(false),
       expectSeq(0),
       sendTOCount(0),
       recvTOCount(0)
@@ -36,7 +37,7 @@ Transport::Transport(QString ip, unsigned short port, QString destIP, unsigned s
     contendTimer->setSingleShot(true);
 
     connect(this->parent(), SIGNAL(readyToSend(bool)), this, SLOT(sendURGPack(bool)));
-    connect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
+    connect(sock, SIGNAL(readyRead()), this, SLOT(recvPacket()));
     connect(sendTimer, SIGNAL(timeout()), this, SLOT(sendTimeOut()));
     connect(receiveTimer, SIGNAL(timeout()), this, SLOT(recvTimeOut()));
     connect(contendTimer, SIGNAL(timeout()), this , SLOT(contentionTimeOut()));
@@ -65,6 +66,7 @@ void Transport::sendURGPack(bool fromClient)
     memset(&urgPack,0, sizeof(DataPacket));
     urgPack.packetType = URG;
     urgPack.windowSize = windowSize;
+    sendingMachine = true;
     memcpy(urgPack.data, qPrintable(filename), static_cast<size_t>(filename.size()));
     sock->writeDatagram(reinterpret_cast<char *>(&urgPack), sizeof(urgPack), *destAddress, destPort);
     emit(packetSent(-1, URG));
@@ -72,8 +74,8 @@ void Transport::sendURGPack(bool fromClient)
     {
         sendTimer->start(TIMEOUT);
     }
-    disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
-    connect(sock, SIGNAL(readyRead()), this, SLOT(recvURGResponse()));
+    //disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
+    //connect(sock, SIGNAL(readyRead()), this, SLOT(recvURGResponse()));
     qDebug() << "sending urg";
 }
 
@@ -379,4 +381,148 @@ void Transport::contentionTimeOut()
             sendTimer->stop();
         }
     }
+}
+
+void Transport::recvPacket()
+{
+    char buffer[HEADERLEN + PAYLOADLEN];
+    ControlPacket * con = nullptr;
+    DataPacket *data = nullptr;
+    while(sock->hasPendingDatagrams())
+    {
+        qint64 read = sock->readDatagram(buffer, HEADERLEN + PAYLOADLEN);
+        if(read == HEADERLEN)
+        {
+            con = reinterpret_cast<ControlPacket *>(buffer);
+            data = nullptr;
+            if(sendingMachine)
+            {
+                senderHandleControl(con);
+            }
+            else
+            {
+
+            }
+        }
+        else
+        {
+            data = reinterpret_cast<DataPacket *>(buffer);
+            con = nullptr;
+            if(sendingMachine)
+            {
+
+            }
+            else
+            {
+                receiverHandleData(data);
+            }
+        }
+
+    }
+}
+
+void Transport::senderHandleControl(ControlPacket *con)
+{
+    if(transferMode)
+    {
+        qDebug() << "transfer mode recived: ack";
+        if(con->ackNum >= (*windowStart)->seqNum+1)
+        {
+            qDebug() << "in recvDataAck got " << con->ackNum;
+            sendTimer->stop();
+            emit(packetRecv(con->ackNum, ACK));
+            delete *windowStart;
+            ++windowStart;
+            timeQueue.dequeue();
+            if(windowStart == windowEnd)
+            {
+                // TODO add weird logic here
+                windowStart = windowEnd = sendWindow;
+                emit(beginContention());
+                return;
+            }
+            sendPacket();
+            sendTimer->start(TIMEOUT - timeQueue.head().msecsTo(QTime::currentTime()));
+        }
+        if(con->ackNum == 0 && windowEnd - sendWindow == windowSize)
+        {
+            sendTimer->stop();
+            timeQueue.clear();
+            int start = static_cast<int>(windowStart - sendWindow);
+            int end = static_cast<int>(windowEnd - sendWindow);
+            qDebug () << "retransmiting from:" << start << " to " << end;
+            for(int i = start; i < end; ++i)
+            {
+                delete sendWindow[i];
+            }
+            windowStart = windowEnd = sendWindow;
+            emit(beginReset());
+            sendNPackets();
+        }
+    }
+    else
+    {
+        qDebug() << "recived: ack";
+        sendTimer->stop();
+        transferMode = true;
+        sendNPackets();
+    }
+}
+
+void Transport::senderHandleData(DataPacket *data)
+{
+
+}
+
+
+void Transport::receiverHandleControl(ControlPacket *con)
+{
+
+}
+
+void Transport::receiverHandleData(DataPacket *data)
+{
+    if(data->packetType == URG)
+    {
+        qDebug() << "recieved urg";
+        if(!recvFile->isOpen())
+        {
+            QString name(data->data);
+            recvFile->setFileName(name.insert(0,'1'));
+            recvFile->open(QIODevice::WriteOnly | QIODevice::Text);
+        }
+        sendAckPack(0);
+        receiveTimer->start(TIMEOUT);
+    }
+    qDebug() << data->seqNum;
+    if((data->packetType & DATA) == DATA && data->seqNum == expectSeq)
+    {
+        receiveTimer->stop();
+        recvFile->write(data->data, PAYLOADLEN);
+        sendAckPack(++expectSeq);
+        qDebug() << "           expected seq: " << expectSeq;
+        if(expectSeq == data->windowSize || (data->packetType & FIN) == FIN)
+        {
+            if((data->packetType & FIN) == FIN)
+            {
+                recvFile->close();
+            }
+            expectSeq = 0;
+            emit(beginContention());
+            return;
+        }
+        else
+        {
+            receiveTimer->start(TIMEOUT);
+        }
+    }
+}
+
+void Transport::sendAckPack(int ackNum)
+{
+    qDebug() << "sending ack";
+    ControlPacket ack;
+    ack.packetType = ACK;
+    ack.ackNum = ackNum;
+    sock->writeDatagram(reinterpret_cast<char *>(&ack), sizeof(ControlPacket), *destAddress, destPort);
 }

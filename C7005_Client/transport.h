@@ -48,6 +48,8 @@ public slots:
     void contention();
     void contentionTimeOut();
 
+    void recvPacket();
+
 private:
     QUdpSocket *sock;
     QHostAddress *destAddress;
@@ -60,12 +62,18 @@ private:
     DataPacket **sendWindow, **windowStart, **windowEnd;
 
     QFile *sendFile, *recvFile;
-    bool transferMode;
+    bool transferMode, sendingMachine;
 
     void retransmit();
     int expectSeq, sendTOCount, recvTOCount;
 
     //TransportDebug *debug;
+    void senderHandleControl(ControlPacket *);
+    void senderHandleData(DataPacket *);
+    void receiverHandleControl(ControlPacket *);
+    void receiverHandleData(DataPacket *);
+
+    void  sendAckPack(int ackNum);
 
 };
 
