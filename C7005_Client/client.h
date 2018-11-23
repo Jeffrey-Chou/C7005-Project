@@ -5,6 +5,7 @@
 #include <QFile>
 
 #include "transport.h"
+#include "transportdebug.h"
 
 namespace Ui {
 class Client;
@@ -30,6 +31,7 @@ private:
     Ui::Client *ui;
     QFile *sendFile;
     Transport *transport;
+    TransportDebug *debug;
     void loadConfig();
 };
 

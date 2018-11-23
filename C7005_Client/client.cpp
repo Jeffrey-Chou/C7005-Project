@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QFileDialog>
 
+
 Client::Client(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::Client),
@@ -13,6 +14,8 @@ Client::Client(QWidget *parent) :
     ui->setupUi(this);
     loadConfig();
     ui->lineEdit_window->setText("8");
+
+
     connect(ui->pushButton_file, SIGNAL(clicked()), this, SLOT(loadFile()));
     connect(ui->pushButton_send, SIGNAL(clicked()), this, SLOT(send()));
     connect(ui->radioButton_mac1, SIGNAL(clicked()), this, SLOT(configureTransport()));
@@ -95,6 +98,7 @@ void Client::send()
     {
         qDebug() << "file not set";
         return;
+
     }
     destIP = ui->lineEdit_net_ip_1->text();
     if(ui->radioButton_mac1->isChecked())
@@ -109,6 +113,12 @@ void Client::send()
         hostPort = ui->lineEdit_mac02_port->text().toUShort();
         destPort = ui->lineEdit_net_port_2->text().toUShort();
     }
+
+    debug = new TransportDebug(8);
+    debug->show();
+    connect(transport, SIGNAL(packetSent(int,int)), debug, SLOT(addSentPack(int,int)));
+    connect(transport, SIGNAL(packetRecv(int,int)), debug, SLOT(addRecvPack(int,int)));
+    connect(transport, SIGNAL(beginReset()), debug, SLOT(resetWindow()));
     //sendFile->open(QIODevice::ReadOnly | QIODevice::Text);
     qDebug() << "host ip and port:" << hostIP << ":" << hostPort;
     qDebug() << "dest ip and port: " << destIP << ":" << destPort;
@@ -136,5 +146,8 @@ void Client::configureTransport()
                                   ui->lineEdit_net_ip_1->text(), ui->lineEdit_net_port_2->text().toUShort(),
                                   ui->lineEdit_window->text().toUShort(), this);
     }
+
+    //TODO move these connects to somewhere else
+
 
 }
