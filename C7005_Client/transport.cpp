@@ -142,6 +142,7 @@ bool Transport::sendPacket()
         data->seqNum = static_cast<int>(windowEnd - sendWindow);
         data->windowSize = windowSize;
         data->ackNum = 0;
+        qDebug() << "sending packet" << data->seqNum;
         sendFile->read(data->data, PAYLOADLEN);
         if(sendFile->atEnd())
         {
@@ -501,6 +502,7 @@ void Transport::receiverHandleControl(ControlPacket *con)
 {
     if(con->packetType == ACK)
     {
+        qDebug() << "receiver got ack";
         receiveTimer->stop();
         sendingMachine = true;
         sendNPackets();
