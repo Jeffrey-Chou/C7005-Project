@@ -2,6 +2,7 @@
 #include "ui_network.h"
 
 #include <QDebug>
+#include <QTime>
 
 Network::Network(QWidget *parent) :
     QMainWindow(parent),
@@ -9,11 +10,13 @@ Network::Network(QWidget *parent) :
     fromMac01(new QUdpSocket(this)),
     fromMac02(new QUdpSocket(this)),
     errorRate(0),
+    delay(0),
     isListen(false)
 {
     ui->setupUi(this);
     loadConfig();
     ui->lineEdit_error->setText("0");
+    ui->lineEdit_Delay->setText("0");
     memset(mac01Buffer, 0, BUFFSIZE);
     memset(mac02Buffer, 0, BUFFSIZE);
     connect(ui->horizontalSlider_BER, SIGNAL(valueChanged(int)), this, SLOT(handleSliderChange(int)));
@@ -79,7 +82,7 @@ void Network::listen()
     if(isListen)
     {
         ui->pushButton->setText("Stop");
-        QHostAddress networkAddr(ui->lineEdit_net_ip->text());
+        delay = ui->lineEdit_Delay->text().toInt();        QHostAddress networkAddr(ui->lineEdit_net_ip->text());
         mac01IP.setAddress(ui->lineEdit_mac01_ip->text());
         mac01Port = ui->lineEdit_mac01_port->text().toUShort();
 
@@ -110,6 +113,8 @@ void Network::sendToMac01()
         qint64 bytesRead = fromMac02->readDatagram(mac02Buffer, BUFFSIZE);
         if(forwardPacket())
         {
+            QTime time = QTime::currentTime();
+            while(time.msecsTo(QTime::currentTime()) < delay);
             fromMac02->writeDatagram(mac02Buffer,bytesRead, mac01IP, mac01Port);
         }
     }
@@ -122,6 +127,8 @@ void Network::sendToMac02()
         qint64 bytesRead = fromMac01->readDatagram(mac01Buffer, BUFFSIZE);
         if(forwardPacket())
         {
+            QTime time = QTime::currentTime();
+            while(time.msecsTo(QTime::currentTime()) < delay);
             fromMac01->writeDatagram(mac01Buffer,bytesRead, mac02IP, mac02Port);
         }
     }

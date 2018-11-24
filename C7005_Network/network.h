@@ -40,6 +40,7 @@ private:
     char mac02Buffer[BUFFSIZE];
 
     int errorRate;
+    int delay;
 
     bool isListen;
 
