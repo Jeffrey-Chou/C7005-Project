@@ -119,6 +119,7 @@ void Client::send()
     connect(transport, SIGNAL(packetSent(int,int)), debug, SLOT(addSentPack(int,int)));
     connect(transport, SIGNAL(packetRecv(int,int)), debug, SLOT(addRecvPack(int,int)));
     connect(transport, SIGNAL(beginReset()), debug, SLOT(resetWindow()));
+    connect(transport, SIGNAL(retransmitWindow(int,int)), debug, SLOT(retrans(int,int)));
     //sendFile->open(QIODevice::ReadOnly | QIODevice::Text);
     qDebug() << "host ip and port:" << hostIP << ":" << hostPort;
     qDebug() << "dest ip and port: " << destIP << ":" << destPort;

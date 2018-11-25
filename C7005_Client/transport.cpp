@@ -133,9 +133,10 @@ void Transport::recvURGResponse()
 
 bool Transport::sendPacket()
 {
-    bool done = false;
+    bool done = true;
     if((windowEnd - sendWindow < windowSize) && !sendFile->atEnd())
     {
+        done = false;
         DataPacket *data = new DataPacket;
         data->packetType = DATA;
         memset(data->data, 0, PAYLOADLEN);
@@ -311,6 +312,7 @@ void Transport::retransmit()
         sock->writeDatagram(reinterpret_cast<char *>(sendWindow[i]), sizeof(DataPacket), *destAddress, destPort);
         timeQueue.enqueue(QTime::currentTime());
     }
+    emit(retransmitWindow(start, end));
     sendTimer->start(TIMEOUT);
     if(sendFile->atEnd())
     {
@@ -434,8 +436,12 @@ void Transport::senderHandleControl(ControlPacket *con)
             qDebug() << "in recvDataAck got " << con->ackNum;
             sendTimer->stop();
             emit(packetRecv(con->ackNum, ACK));
-            delete *windowStart;
-            ++windowStart;
+            while(windowStart != windowEnd && (*windowStart)->seqNum+1 <= con->ackNum)
+            {
+                delete *windowStart;
+                ++windowStart;
+            }
+
             timeQueue.dequeue();
             if(windowStart == windowEnd)
             {
@@ -444,7 +450,7 @@ void Transport::senderHandleControl(ControlPacket *con)
                 emit(beginContention());
                 return;
             }
-            sendPacket();
+            sendNPackets();
             int time = TIMEOUT - timeQueue.head().msecsTo(QTime::currentTime());
             if(time < 0)
                 time = 0;

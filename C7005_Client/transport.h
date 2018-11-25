@@ -30,6 +30,7 @@ signals:
     void beginContention();
     void packetSent(int,int);
     void packetRecv(int,int);
+    void retransmitWindow(int, int);
     void beginReset();
 
 public slots:

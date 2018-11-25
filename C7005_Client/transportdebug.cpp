@@ -9,13 +9,13 @@ void switchOnType(int type, QString& message)
         message.append("URG Packet");
         break;
     case DATA:
-        message.append("DATA Packet");
+        message.append("DATA Packet ");
         break;
     case ACK:
-        message.append("ACK Packet");
+        message.append("ACK Packet ");
         break;
     case DATA+FIN:
-        message.append("DATA + FIN Packet");
+        message.append("FIN + DATA Packet ");
         break;
     default:
         break;
@@ -33,6 +33,7 @@ TransportDebug::TransportDebug(unsigned short windowSize, QWidget *parent) :
     styleDefault.append("QPushButton{ border: 1px solid #000000; }");
     styleSent.append("QPushButton{ border: 1px solid #000000; background-color: lightblue}");
     styleAcked.append("QPushButton{ border: 1px solid #000000; background-color: green}");
+    styleRetransmit.append("QPushButton{ border: 1px solid #000000; background-color: red}");
     QWidget *widg = new QWidget();
     ui->scrollArea->setWidget(widg);
     widg->setFixedHeight(height );
@@ -48,6 +49,7 @@ TransportDebug::TransportDebug(unsigned short windowSize, QWidget *parent) :
 
 
     }
+    left = true;
     head = 0;
 
 
@@ -60,25 +62,46 @@ TransportDebug::~TransportDebug()
 
 void TransportDebug::addSentPack(int index, int type)
 {
-    if(index >= 0)
-        window[index]->setStyleSheet(styleSent);
+    if(!left)
+    {
+        ui->textEdit->insertPlainText("\n");
+        ui->textEdit->setAlignment(Qt::AlignLeft);
+        left = true;
+    }
 
     QString message("Sent: ");
     switchOnType(type, message);
+    if(index >= 0)
+    {
+        window[index]->setStyleSheet(styleSent);
+        message.append(QString::number(index));
+    }
+
     ui->textEdit->append(message);
+
 }
 
 void TransportDebug::addRecvPack(int index, int type)
 {
+
+    if(left)
+    {
+        ui->textEdit->insertPlainText("\n");
+        ui->textEdit->setAlignment(Qt::AlignRight);
+        left = false;
+    }
+    QString message("Received: ");
+    switchOnType(type, message);
     if(index >= 0)
     {
         while(head < index)
             window[head++]->setStyleSheet(styleAcked);
+        message.append(QString::number(index));
     }
 
-    QString message("\t\tReceived: ");
-    switchOnType(type, message);
     ui->textEdit->append(message);
+
+
 }
 
 void TransportDebug::resetWindow()
@@ -88,4 +111,24 @@ void TransportDebug::resetWindow()
     {
         window[i]->setStyleSheet(styleDefault);
     }
+}
+
+void TransportDebug::retrans(int start, int end)
+{
+    if(!left)
+    {
+        ui->textEdit->insertPlainText("\n");
+        ui->textEdit->setAlignment(Qt::AlignLeft);
+        left = true;
+    }
+
+    for(int i = start; i < end; ++i)
+    {
+        window[i]->setStyleSheet(styleRetransmit);
+    }
+    QString message("Retransmitting from: ");
+    message.append(QString::number(start));
+    message.append(" to ");
+    message.append(QString::number(end));
+    ui->textEdit->append(message);
 }

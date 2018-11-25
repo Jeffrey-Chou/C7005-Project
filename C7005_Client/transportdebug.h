@@ -22,6 +22,7 @@ public:
 public slots:
     void addSentPack(int,int);
     void addRecvPack(int,int);
+    void retrans(int, int);
     void resetWindow();
 
 private:
@@ -29,7 +30,8 @@ private:
     unsigned short windowSize;
     QVector<QPushButton *> window;
     int head;
-    QString styleDefault, styleSent, styleAcked;
+    QString styleDefault, styleSent, styleAcked, styleRetransmit;
+    bool left;
 };
 
 #endif // TRANSPORTDEBUG_H
