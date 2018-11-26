@@ -9,7 +9,8 @@ Client::Client(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::Client),
     sendFile(new QFile()),
-    transport(nullptr)
+    transport(nullptr),
+    debug(nullptr)
 {
     ui->setupUi(this);
     loadConfig();
@@ -114,12 +115,8 @@ void Client::send()
         destPort = ui->lineEdit_net_port_2->text().toUShort();
     }
 
-    debug = new TransportDebug(8);
-    debug->show();
-    connect(transport, SIGNAL(packetSent(int,int)), debug, SLOT(addSentPack(int,int)));
-    connect(transport, SIGNAL(packetRecv(int,int)), debug, SLOT(addRecvPack(int,int)));
-    connect(transport, SIGNAL(beginReset()), debug, SLOT(resetWindow()));
-    connect(transport, SIGNAL(retransmitWindow(int,int)), debug, SLOT(retrans(int,int)));
+    openDebugWindow();
+
     //sendFile->open(QIODevice::ReadOnly | QIODevice::Text);
     qDebug() << "host ip and port:" << hostIP << ":" << hostPort;
     qDebug() << "dest ip and port: " << destIP << ":" << destPort;
@@ -147,8 +144,21 @@ void Client::configureTransport()
                                   ui->lineEdit_net_ip_1->text(), ui->lineEdit_net_port_2->text().toUShort(),
                                   ui->lineEdit_window->text().toUShort(), this);
     }
-
+    connect(transport, SIGNAL(openDebug()), this, SLOT(openDebugWindow()));
     //TODO move these connects to somewhere else
 
 
+}
+
+void Client::openDebugWindow()
+{
+    if(debug == nullptr)
+    {
+        debug = new TransportDebug(ui->lineEdit_window->text().toUShort());
+        debug->show();
+        connect(transport, SIGNAL(packetSent(int,int)), debug, SLOT(addSentPack(int,int)));
+        connect(transport, SIGNAL(packetRecv(int,int)), debug, SLOT(addRecvPack(int,int)));
+        connect(transport, SIGNAL(beginReset()), debug, SLOT(resetWindow()));
+        connect(transport, SIGNAL(retransmitWindow(int,int)), debug, SLOT(retrans(int,int)));
+    }
 }

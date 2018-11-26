@@ -27,6 +27,7 @@ public:
 
 
 signals:
+    void openDebug();
     void beginContention();
     void packetSent(int,int);
     void packetRecv(int,int);

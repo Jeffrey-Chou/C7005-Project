@@ -26,6 +26,7 @@ public slots:
     void loadFile();
     void send();
     void configureTransport();
+    void openDebugWindow();
 
 private:
     Ui::Client *ui;

@@ -73,7 +73,8 @@ void TransportDebug::addSentPack(int index, int type)
     switchOnType(type, message);
     if(index >= 0)
     {
-        window[index]->setStyleSheet(styleSent);
+        if(type == DATA)
+            window[index]->setStyleSheet(styleSent);
         message.append(QString::number(index));
     }
 
@@ -94,7 +95,7 @@ void TransportDebug::addRecvPack(int index, int type)
     switchOnType(type, message);
     if(index >= 0)
     {
-        while(head < index)
+        while(head < index && type == ACK)
             window[head++]->setStyleSheet(styleAcked);
         message.append(QString::number(index));
     }

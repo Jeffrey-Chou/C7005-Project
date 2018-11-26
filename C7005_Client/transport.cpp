@@ -524,10 +524,12 @@ void Transport::receiverHandleData(DataPacket *data)
 
         if(!recvFile->isOpen())
         {
+            emit(openDebug());
             QString name(data->data);
             recvFile->setFileName(name.insert(0,'1'));
             recvFile->open(QIODevice::WriteOnly | QIODevice::Text);
         }
+        emit(packetRecv(-1, URG));
         sendAckPack(0);
         receiveTimer->start(TIMEOUT);
     }
@@ -536,7 +538,9 @@ void Transport::receiverHandleData(DataPacket *data)
     {
         receiveTimer->stop();
         recvFile->write(data->data, PAYLOADLEN);
+        emit(packetRecv(data->seqNum, DATA));
         sendAckPack(++expectSeq);
+        emit(packetSent(expectSeq, ACK));
         qDebug() << "           expected seq: " << expectSeq;
         if(expectSeq == data->windowSize || (data->packetType & FIN) == FIN)
         {
