@@ -298,6 +298,7 @@ void Transport::recvTimeOut()
 {
     qDebug() << "recv timeout sending ack" << expectSeq;
     sendAckPack(expectSeq);
+    emit(retransmit(expectSeq, expectSeq, ACK));
     receiveTimer->start(TIMEOUT);
 }
 
@@ -312,7 +313,7 @@ void Transport::retransmit()
         sock->writeDatagram(reinterpret_cast<char *>(sendWindow[i]), sizeof(DataPacket), *destAddress, destPort);
         timeQueue.enqueue(QTime::currentTime());
     }
-    emit(retransmitWindow(start, end));
+    emit(retransmit(start, end, DATA));
     sendTimer->start(TIMEOUT);
     if(sendFile->atEnd())
     {
@@ -384,6 +385,7 @@ void Transport::contentionTimeOut()
             //connect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
             receiveTimer->stop();
             sendTimer->stop();
+            emit(finished());
         }
     }
 }
@@ -524,13 +526,14 @@ void Transport::receiverHandleData(DataPacket *data)
 
         if(!recvFile->isOpen())
         {
-            emit(openDebug());
+            emit(openDebug(sock->localAddress().toString(), sock->localPort()));
             QString name(data->data);
             recvFile->setFileName(name.insert(0,'1'));
             recvFile->open(QIODevice::WriteOnly | QIODevice::Text);
         }
         emit(packetRecv(-1, URG));
         sendAckPack(0);
+        emit(packetSent(0, ACK));
         receiveTimer->start(TIMEOUT);
     }
     qDebug() << "received data: " <<data->seqNum;

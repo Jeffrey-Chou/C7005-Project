@@ -27,12 +27,13 @@ public:
 
 
 signals:
-    void openDebug();
+    void openDebug(QString, unsigned short);
     void beginContention();
     void packetSent(int,int);
     void packetRecv(int,int);
-    void retransmitWindow(int, int);
+    void retransmit(int, int, int);
     void beginReset();
+    void finished();
 
 public slots:
     void sendURGPack(bool);

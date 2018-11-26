@@ -22,10 +22,11 @@ void switchOnType(int type, QString& message)
     }
 }
 
-TransportDebug::TransportDebug(unsigned short windowSize, QWidget *parent) :
+TransportDebug::TransportDebug(QString ip, unsigned short port, unsigned short windowSize, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::TransportDebug),
-    windowSize(windowSize)
+    windowSize(windowSize),
+    logFile(new QFile())
 {
     ui->setupUi(this);
     int width = ui->scrollArea->width()/windowSize ;
@@ -51,6 +52,13 @@ TransportDebug::TransportDebug(unsigned short windowSize, QWidget *parent) :
     }
     left = true;
     head = 0;
+    logFile->setFileName(ip + ":" + QString::number(port) + ".log");
+    logFile->open(QIODevice::Append | QIODevice::Text);
+    logStream.setDevice(logFile);
+    QString currTime(QTime::currentTime().toString("hh:mm:ss:zzz"));
+    ui->textEdit->append(QDate::currentDate().toString("yyyy.MM.dd") + " Start time: " + currTime);
+    logStream << QDate::currentDate().toString("yyyy.MM.dd") << " Start time: " << currTime << "\n";
+
 
 
 }
@@ -79,6 +87,8 @@ void TransportDebug::addSentPack(int index, int type)
     }
 
     ui->textEdit->append(message);
+    logStream << message << "\n";
+
 
 }
 
@@ -101,6 +111,7 @@ void TransportDebug::addRecvPack(int index, int type)
     }
 
     ui->textEdit->append(message);
+    logStream << message << "\n";
 
 
 }
@@ -114,7 +125,7 @@ void TransportDebug::resetWindow()
     }
 }
 
-void TransportDebug::retrans(int start, int end)
+void TransportDebug::retrans(int start, int end, int type)
 {
     if(!left)
     {
@@ -127,9 +138,35 @@ void TransportDebug::retrans(int start, int end)
     {
         window[i]->setStyleSheet(styleRetransmit);
     }
-    QString message("Retransmitting from: ");
-    message.append(QString::number(start));
-    message.append(" to ");
-    message.append(QString::number(end));
+    QString message("Retransmitting ");
+    if(type == DATA)
+    {
+        message.append("Data Packets From: ");
+        message.append(QString::number(start));
+        message.append(" to ");
+        message.append(QString::number(end));
+    }
+    if(type == ACK)
+    {
+        message.append("ACK Packet " + QString::number(end));
+    }
     ui->textEdit->append(message);
+    logStream << message << "\n";
+}
+
+void TransportDebug::closeDebug()
+{
+    if(!left)
+    {
+        ui->textEdit->insertPlainText("\n");
+        ui->textEdit->setAlignment(Qt::AlignLeft);
+        left = true;
+    }
+    QString currTime(QTime::currentTime().toString("hh:mm:ss:zzz"));
+    ui->textEdit->append(QDate::currentDate().toString("yyyy.MM.dd") + " End time: " + currTime);
+    logStream << QDate::currentDate().toString("yyyy.MM.dd") << " End time: " << currTime << "\n\n";
+    logStream.flush();
+    logFile->close();
+
+
 }

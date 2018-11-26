@@ -26,7 +26,7 @@ public slots:
     void loadFile();
     void send();
     void configureTransport();
-    void openDebugWindow();
+    void openDebugWindow(QString, unsigned short);
 
 private:
     Ui::Client *ui;
