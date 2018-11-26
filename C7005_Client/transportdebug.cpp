@@ -52,12 +52,12 @@ TransportDebug::TransportDebug(QString ip, unsigned short port, unsigned short w
     }
     left = true;
     head = 0;
-    logFile->setFileName(ip + ":" + QString::number(port) + ".log");
+    logFile->setFileName(ip + ":" + QString::number(port) + ":" + QDate::currentDate().toString("yyyy.MM.dd") +".log");
     logFile->open(QIODevice::Append | QIODevice::Text);
     logStream.setDevice(logFile);
     QString currTime(QTime::currentTime().toString("hh:mm:ss:zzz"));
-    ui->textEdit->append(QDate::currentDate().toString("yyyy.MM.dd") + " Start time: " + currTime);
-    logStream << QDate::currentDate().toString("yyyy.MM.dd") << " Start time: " << currTime << "\n";
+    ui->textEdit->append("Start time: " + currTime);
+    logStream << "Start time: " << currTime << "\n";
 
 
 
@@ -163,8 +163,8 @@ void TransportDebug::closeDebug()
         left = true;
     }
     QString currTime(QTime::currentTime().toString("hh:mm:ss:zzz"));
-    ui->textEdit->append(QDate::currentDate().toString("yyyy.MM.dd") + " End time: " + currTime);
-    logStream << QDate::currentDate().toString("yyyy.MM.dd") << " End time: " << currTime << "\n\n";
+    ui->textEdit->append("End time: " + currTime);
+    logStream << "End time: " << currTime << "\n\n";
     logStream.flush();
     logFile->close();
 

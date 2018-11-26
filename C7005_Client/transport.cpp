@@ -445,6 +445,7 @@ void Transport::senderHandleControl(ControlPacket *con)
             }
 
             timeQueue.dequeue();
+            sendNPackets();
             if(windowStart == windowEnd)
             {
                 // TODO add weird logic here
@@ -452,7 +453,7 @@ void Transport::senderHandleControl(ControlPacket *con)
                 emit(beginContention());
                 return;
             }
-            sendNPackets();
+
             int time = TIMEOUT - timeQueue.head().msecsTo(QTime::currentTime());
             if(time < 0)
                 time = 0;
@@ -466,6 +467,7 @@ void Transport::senderHandleControl(ControlPacket *con)
             int start = static_cast<int>(windowStart - sendWindow);
             int end = static_cast<int>(windowEnd - sendWindow);
             qDebug () << "got ack 0 while ";
+            emit(packetRecv(con->ackNum,ACK));
             for(int i = start; i < end; ++i)
             {
                 delete sendWindow[i];
@@ -478,6 +480,7 @@ void Transport::senderHandleControl(ControlPacket *con)
     else
     {
         qDebug() << "recived: urg ack";
+        emit(packetRecv(con->ackNum, ACK));
         sendTimer->stop();
         contendTimer->stop();
         transferMode = true;
