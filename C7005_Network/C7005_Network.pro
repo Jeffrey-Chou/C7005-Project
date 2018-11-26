@@ -27,7 +27,8 @@ SOURCES += \
         network.cpp
 
 HEADERS += \
-        network.h
+        network.h \
+    packet.h
 
 FORMS += \
         network.ui

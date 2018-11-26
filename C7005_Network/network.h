@@ -4,9 +4,13 @@
 #include <QMainWindow>
 #include <QFile>
 #include <QUdpSocket>
+#include <QTimer>
+#include <QQueue>
 
 #include <stdlib.h>
 #include <time.h>
+
+#include "packet.h"
 
 #define BUFFSIZE 512
 
@@ -29,12 +33,15 @@ public slots:
     void listen();
     void sendToMac01();
     void sendToMac02();
+    void toMac01DelayOver();
+    void toMac02DelayOver();
 
 private:
     Ui::Network *ui;
     QUdpSocket *fromMac01, *fromMac02;
     QHostAddress mac01IP, mac02IP;
     unsigned short mac01Port, mac02Port;
+
 
     char mac01Buffer[BUFFSIZE];
     char mac02Buffer[BUFFSIZE];
@@ -43,6 +50,9 @@ private:
     int delay;
 
     bool isListen;
+    QTimer toMac01Timer, toMac02Timer;
+    QQueue<char *> toMac01Queue, toMac02Queue;
+    QQueue<long long> toMac01PacketSize, toMac02PacketSize;
 
 
 
