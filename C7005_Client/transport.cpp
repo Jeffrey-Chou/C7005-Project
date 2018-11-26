@@ -133,9 +133,10 @@ void Transport::recvURGResponse()
 
 bool Transport::sendPacket()
 {
-    bool done = false;
+    bool done = true;
     if((windowEnd - sendWindow < windowSize) && !sendFile->atEnd())
     {
+        done = false;
         DataPacket *data = new DataPacket;
         data->packetType = DATA;
         memset(data->data, 0, PAYLOADLEN);
@@ -297,6 +298,7 @@ void Transport::recvTimeOut()
 {
     qDebug() << "recv timeout sending ack" << expectSeq;
     sendAckPack(expectSeq);
+    emit(retransmit(expectSeq, expectSeq, ACK));
     receiveTimer->start(TIMEOUT);
 }
 
@@ -311,6 +313,7 @@ void Transport::retransmit()
         sock->writeDatagram(reinterpret_cast<char *>(sendWindow[i]), sizeof(DataPacket), *destAddress, destPort);
         timeQueue.enqueue(QTime::currentTime());
     }
+    emit(retransmit(start, end, DATA));
     sendTimer->start(TIMEOUT);
     if(sendFile->atEnd())
     {
@@ -382,6 +385,7 @@ void Transport::contentionTimeOut()
             //connect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
             receiveTimer->stop();
             sendTimer->stop();
+            emit(finished());
         }
     }
 }
@@ -434,9 +438,14 @@ void Transport::senderHandleControl(ControlPacket *con)
             qDebug() << "in recvDataAck got " << con->ackNum;
             sendTimer->stop();
             emit(packetRecv(con->ackNum, ACK));
-            delete *windowStart;
-            ++windowStart;
+            while(windowStart != windowEnd && (*windowStart)->seqNum+1 <= con->ackNum)
+            {
+                delete *windowStart;
+                ++windowStart;
+            }
+
             timeQueue.dequeue();
+            sendNPackets();
             if(windowStart == windowEnd)
             {
                 // TODO add weird logic here
@@ -444,7 +453,7 @@ void Transport::senderHandleControl(ControlPacket *con)
                 emit(beginContention());
                 return;
             }
-            sendPacket();
+
             int time = TIMEOUT - timeQueue.head().msecsTo(QTime::currentTime());
             if(time < 0)
                 time = 0;
@@ -458,6 +467,7 @@ void Transport::senderHandleControl(ControlPacket *con)
             int start = static_cast<int>(windowStart - sendWindow);
             int end = static_cast<int>(windowEnd - sendWindow);
             qDebug () << "got ack 0 while ";
+            emit(packetRecv(con->ackNum,ACK));
             for(int i = start; i < end; ++i)
             {
                 delete sendWindow[i];
@@ -470,6 +480,7 @@ void Transport::senderHandleControl(ControlPacket *con)
     else
     {
         qDebug() << "recived: urg ack";
+        emit(packetRecv(con->ackNum, ACK));
         sendTimer->stop();
         contendTimer->stop();
         transferMode = true;
@@ -518,11 +529,14 @@ void Transport::receiverHandleData(DataPacket *data)
 
         if(!recvFile->isOpen())
         {
+            emit(openDebug(sock->localAddress().toString(), sock->localPort()));
             QString name(data->data);
             recvFile->setFileName(name.insert(0,'1'));
             recvFile->open(QIODevice::WriteOnly | QIODevice::Text);
         }
+        emit(packetRecv(-1, URG));
         sendAckPack(0);
+        emit(packetSent(0, ACK));
         receiveTimer->start(TIMEOUT);
     }
     qDebug() << "received data: " <<data->seqNum;
@@ -530,7 +544,9 @@ void Transport::receiverHandleData(DataPacket *data)
     {
         receiveTimer->stop();
         recvFile->write(data->data, PAYLOADLEN);
+        emit(packetRecv(data->seqNum, DATA));
         sendAckPack(++expectSeq);
+        emit(packetSent(expectSeq, ACK));
         qDebug() << "           expected seq: " << expectSeq;
         if(expectSeq == data->windowSize || (data->packetType & FIN) == FIN)
         {
