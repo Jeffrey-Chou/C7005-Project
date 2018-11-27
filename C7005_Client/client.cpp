@@ -21,7 +21,6 @@ Client::Client(QWidget *parent) :
     connect(ui->pushButton_send, SIGNAL(clicked()), this, SLOT(send()));
     connect(ui->radioButton_mac1, SIGNAL(clicked()), this, SLOT(configureTransport()));
     connect(ui->radioButton_mac2, SIGNAL(clicked()), this, SLOT(configureTransport()));
-    //connect(this, SIGNAL(readyToSend(QFile*)), transport, SLOT(send(QFile*)));
 }
 
 Client::~Client()
@@ -117,7 +116,6 @@ void Client::send()
 
     openDebugWindow(hostIP, hostPort);
 
-    //sendFile->open(QIODevice::ReadOnly | QIODevice::Text);
     qDebug() << "host ip and port:" << hostIP << ":" << hostPort;
     qDebug() << "dest ip and port: " << destIP << ":" << destPort;
     qDebug() << "window size: " << window;
@@ -145,8 +143,6 @@ void Client::configureTransport()
                                   ui->lineEdit_window->text().toUShort(), this);
     }
     connect(transport, SIGNAL(openDebug(QString, unsigned short)), this, SLOT(openDebugWindow(QString, unsigned short)));
-    //TODO move these connects to somewhere else
-
 
 }
 

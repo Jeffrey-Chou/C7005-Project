@@ -85,7 +85,8 @@ void TransportDebug::addSentPack(int index, int type)
             window[index]->setStyleSheet(styleSent);
         message.append(QString::number(index));
     }
-
+    message.append(" ");
+    message.append(QTime::currentTime().toString("hh:mm:ss:zzz"));
     ui->textEdit->append(message);
     logStream << message << "\n";
 
@@ -109,7 +110,8 @@ void TransportDebug::addRecvPack(int index, int type)
             window[head++]->setStyleSheet(styleAcked);
         message.append(QString::number(index));
     }
-
+    message.append(" ");
+    message.append(QTime::currentTime().toString("hh:mm:ss:zzz"));
     ui->textEdit->append(message);
     logStream << message << "\n";
 
@@ -150,6 +152,8 @@ void TransportDebug::retrans(int start, int end, int type)
     {
         message.append("ACK Packet " + QString::number(end));
     }
+    message.append(" ");
+    message.append(QTime::currentTime().toString("hh:mm:ss:zzz"));
     ui->textEdit->append(message);
     logStream << message << "\n";
 }
@@ -167,6 +171,5 @@ void TransportDebug::closeDebug()
     logStream << "End time: " << currTime << "\n\n";
     logStream.flush();
     logFile->close();
-
 
 }

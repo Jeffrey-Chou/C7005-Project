@@ -37,12 +37,12 @@ signals:
 
 public slots:
     void sendURGPack(bool);
-    void recvURG();
-    void recvURGResponse();
-    void recvData();
+
+
+
     bool sendPacket();
     void sendNPackets();
-    void recvDataAck();
+
 
 
     void sendTimeOut();
