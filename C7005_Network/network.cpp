@@ -31,11 +31,13 @@ Network::~Network()
     delete ui;
 }
 
+// Determines whether to forward a packet or not
 bool Network::forwardPacket()
 {
     return (rand() % 100 + 1) > errorRate;
 }
 
+// Parses the data in the config file and writes it to the text line
 void parseData(QList<QByteArray> &lineSub, QWidget *widg)
 {
     QList<QLineEdit *> lineEdits = widg->findChildren<QLineEdit *>();
@@ -44,7 +46,7 @@ void parseData(QList<QByteArray> &lineSub, QWidget *widg)
         lineEdits[i]->insert(lineSub.at(i + 1));
     }
 }
-
+// Opens the config file
 void Network::loadConfig()
 {
     QFile conf("common.conf");
@@ -72,12 +74,14 @@ void Network::loadConfig()
     conf.close();
 }
 
+// Updates error text line when slider changes
 void Network::handleSliderChange(int value)
 {
     ui->lineEdit_error->setText(QString::number(value));
     errorRate = value;
 }
 
+// Starts and stops the network from listening when pressed
 void Network::listen()
 {
     isListen = !isListen;
@@ -127,6 +131,8 @@ void Network::listen()
     }
 }
 
+// Receives packets from machine 2 to send to machine 1.
+// If the packet will be forwarded, add it to the queue and start the delay timer
 void Network::sendToMac01()
 {
     while(fromMac02->hasPendingDatagrams())
@@ -152,6 +158,8 @@ void Network::sendToMac01()
     }
 }
 
+// Receives packets from machine 1 to send to machine 2.
+// If the packet will be forwarded, add it to the queue and start the delay timer
 void Network::sendToMac02()
 {
     while(fromMac01->hasPendingDatagrams())
@@ -178,6 +186,8 @@ void Network::sendToMac02()
     }
 }
 
+// Called when the to machine 1 timer has elapsed. Grabs the first packet on the queue and sends it.
+// If the queue has more packets restarts the timer.
 void Network::toMac01DelayOver()
 {
     char *packet = toMac01Queue.dequeue();
@@ -193,6 +203,8 @@ void Network::toMac01DelayOver()
 
 }
 
+// Called when the to machine 2 timer has elapsed. Grabs the first packet on the queue and sends it.
+// If the queue has more packets restarts the timer.
 void Network::toMac02DelayOver()
 {
     char *packet = toMac02Queue.dequeue();

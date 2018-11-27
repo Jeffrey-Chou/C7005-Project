@@ -1,6 +1,7 @@
 #include "transportdebug.h"
 #include "ui_transportdebug.h"
 
+// Append to the message depending on the type of packet
 void switchOnType(int type, QString& message)
 {
     switch(type)
@@ -21,6 +22,7 @@ void switchOnType(int type, QString& message)
         break;
     }
 }
+
 
 TransportDebug::TransportDebug(QString ip, unsigned short port, unsigned short windowSize, QWidget *parent) :
     QWidget(parent),
@@ -68,6 +70,7 @@ TransportDebug::~TransportDebug()
     delete ui;
 }
 
+// Write to debug if a packet is sent
 void TransportDebug::addSentPack(int index, int type)
 {
     if(!left)
@@ -85,13 +88,15 @@ void TransportDebug::addSentPack(int index, int type)
             window[index]->setStyleSheet(styleSent);
         message.append(QString::number(index));
     }
-
+    message.append(" ");
+    message.append(QTime::currentTime().toString("hh:mm:ss:zzz"));
     ui->textEdit->append(message);
     logStream << message << "\n";
 
 
 }
 
+// Write to debug is a packet is received
 void TransportDebug::addRecvPack(int index, int type)
 {
 
@@ -109,13 +114,15 @@ void TransportDebug::addRecvPack(int index, int type)
             window[head++]->setStyleSheet(styleAcked);
         message.append(QString::number(index));
     }
-
+    message.append(" ");
+    message.append(QTime::currentTime().toString("hh:mm:ss:zzz"));
     ui->textEdit->append(message);
     logStream << message << "\n";
 
 
 }
 
+// Reset the debug windwo gui to default
 void TransportDebug::resetWindow()
 {
     head = 0;
@@ -125,6 +132,7 @@ void TransportDebug::resetWindow()
     }
 }
 
+// Write to debug if a retransmission occurs
 void TransportDebug::retrans(int start, int end, int type)
 {
     if(!left)
@@ -150,10 +158,13 @@ void TransportDebug::retrans(int start, int end, int type)
     {
         message.append("ACK Packet " + QString::number(end));
     }
+    message.append(" ");
+    message.append(QTime::currentTime().toString("hh:mm:ss:zzz"));
     ui->textEdit->append(message);
     logStream << message << "\n";
 }
 
+// Close the log file on completion
 void TransportDebug::closeDebug()
 {
     if(!left)
@@ -167,6 +178,5 @@ void TransportDebug::closeDebug()
     logStream << "End time: " << currTime << "\n\n";
     logStream.flush();
     logFile->close();
-
 
 }

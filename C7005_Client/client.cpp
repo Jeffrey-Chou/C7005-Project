@@ -21,7 +21,6 @@ Client::Client(QWidget *parent) :
     connect(ui->pushButton_send, SIGNAL(clicked()), this, SLOT(send()));
     connect(ui->radioButton_mac1, SIGNAL(clicked()), this, SLOT(configureTransport()));
     connect(ui->radioButton_mac2, SIGNAL(clicked()), this, SLOT(configureTransport()));
-    //connect(this, SIGNAL(readyToSend(QFile*)), transport, SLOT(send(QFile*)));
 }
 
 Client::~Client()
@@ -29,6 +28,7 @@ Client::~Client()
     delete ui;
 }
 
+// Parses the data in the config file and writes it to the text line
 void parseData(QList<QByteArray> &lineSub, QWidget *widg)
 {
     QList<QLineEdit *> lineEdits = widg->findChildren<QLineEdit *>();
@@ -38,6 +38,7 @@ void parseData(QList<QByteArray> &lineSub, QWidget *widg)
     }
 }
 
+// Opens the config file
 void Client::loadConfig()
 {
     QFile conf("common.conf");
@@ -65,6 +66,7 @@ void Client::loadConfig()
     conf.close();
 }
 
+// Opens a file dialog the load a file to send
 void Client::loadFile()
 {
     QString filename = QFileDialog::getOpenFileName(this, tr("Select a file"));
@@ -83,6 +85,7 @@ void Client::loadFile()
     ui->lineEdit_file->setText(filename);
 }
 
+// Called when the send button is pressed. Takes the information from the text lines to send data
 void Client::send()
 {
     int window;
@@ -117,7 +120,6 @@ void Client::send()
 
     openDebugWindow(hostIP, hostPort);
 
-    //sendFile->open(QIODevice::ReadOnly | QIODevice::Text);
     qDebug() << "host ip and port:" << hostIP << ":" << hostPort;
     qDebug() << "dest ip and port: " << destIP << ":" << destPort;
     qDebug() << "window size: " << window;
@@ -127,6 +129,7 @@ void Client::send()
 
 }
 
+// Configures the transport class from the text lines
 void Client::configureTransport()
 {
     if(transport)
@@ -145,11 +148,10 @@ void Client::configureTransport()
                                   ui->lineEdit_window->text().toUShort(), this);
     }
     connect(transport, SIGNAL(openDebug(QString, unsigned short)), this, SLOT(openDebugWindow(QString, unsigned short)));
-    //TODO move these connects to somewhere else
-
 
 }
 
+// Opens the debug menu when signalled.
 void Client::openDebugWindow(QString ip, unsigned short port)
 {
     if(debug == nullptr)

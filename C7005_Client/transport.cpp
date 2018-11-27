@@ -28,10 +28,8 @@ Transport::Transport(QString ip, unsigned short port, QString destIP, unsigned s
     {
         sendWindow = new DataPacket*[windowSize];
         windowStart = windowEnd = sendWindow;
-        //windowEnd = &sendWindow[windowSize/2];
-        qDebug() << windowEnd - windowStart;
     }
-    //debug = new TransportDebug(windowSize, this);
+
     sendTimer->setSingleShot(true);
     receiveTimer->setSingleShot(true);
     contendTimer->setSingleShot(true);
@@ -42,7 +40,6 @@ Transport::Transport(QString ip, unsigned short port, QString destIP, unsigned s
     connect(receiveTimer, SIGNAL(timeout()), this, SLOT(recvTimeOut()));
     connect(contendTimer, SIGNAL(timeout()), this , SLOT(contentionTimeOut()));
     connect(this, SIGNAL(beginContention()), this, SLOT(contention()), Qt::QueuedConnection);
-    //connect(sendTimer, )
 
 }
 
@@ -53,14 +50,15 @@ Transport::~Transport()
         delete[] sendWindow;
 }
 
+// Sets the sendfile pointer to the file pointer from the client
 void Transport::setFile(QFile *file)
 {
     sendFile = file;
 }
 
+// Creates an URG packet and sends it. An URG packet is a DATA packet with the file name as the payload
 void Transport::sendURGPack(bool fromClient)
 {
-    //sendFile = file;
     QString filename =  sendFile->fileName().mid(sendFile->fileName().lastIndexOf('/') + 1, -1);
     DataPacket urgPack;
     memset(&urgPack,0, sizeof(DataPacket));
@@ -74,63 +72,11 @@ void Transport::sendURGPack(bool fromClient)
     {
         sendTimer->start(TIMEOUT);
     }
-    //disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
-    //connect(sock, SIGNAL(readyRead()), this, SLOT(recvURGResponse()));
     qDebug() << "sending urg";
 }
 
-void Transport::recvURG()
-{
-    char buffer[PAYLOADLEN + HEADERLEN];
-    while(sock->hasPendingDatagrams())
-    {
-        sock->readDatagram(buffer, PAYLOADLEN + HEADERLEN);
-        DataPacket* data = reinterpret_cast<DataPacket *>(buffer);
-        if(data->packetType == URG)
-        {
-            contendTimer->stop();
-            transferMode = false;
-            if(!recvFile->isOpen())
-            {
-                QString name(data->data);
 
-                recvFile->setFileName(name.insert(0,'1'));
-
-                recvFile->open(QIODevice::WriteOnly | QIODevice::Text);
-            }
-            disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
-            connect(sock, SIGNAL(readyRead()), this, SLOT(recvData()));
-            ControlPacket ack;
-            ack.packetType = ACK;
-            sock->writeDatagram(reinterpret_cast<char *>(&ack), sizeof(ControlPacket), *destAddress, destPort);
-            receiveTimer->start(TIMEOUT);
-        }
-
-
-    }
-}
-
-void Transport::recvURGResponse()
-{
-    char buffer[HEADERLEN];
-    if(sock->hasPendingDatagrams())
-    {
-        sock->readDatagram(buffer, HEADERLEN);
-        ControlPacket* data = reinterpret_cast<ControlPacket *>(buffer);
-        if(data->packetType == ACK)
-        {
-            qDebug() << "recived: ack";
-            sendTimer->stop();
-            disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURGResponse()));
-            connect(sock, SIGNAL(readyRead()), this, SLOT(recvDataAck()));
-            transferMode = true;
-            sendNPackets();
-        }
-
-
-    }
-}
-
+// Generates and sends a packet if there is still space in the send window. Returns true if not able to send anymore
 bool Transport::sendPacket()
 {
     bool done = true;
@@ -160,6 +106,7 @@ bool Transport::sendPacket()
     return done;
 }
 
+// Sends multiple packets, up to half of the window size.
 void Transport::sendNPackets()
 {
     qDebug() << "sending n packets";
@@ -175,112 +122,9 @@ void Transport::sendNPackets()
     sendTimer->start(TIMEOUT);
 }
 
-void Transport::recvData()
-{
-    char buffer[PAYLOADLEN + HEADERLEN];
-    while(sock->hasPendingDatagrams())
-    {
-        sock->readDatagram(buffer, PAYLOADLEN + HEADERLEN);
-        DataPacket *data = reinterpret_cast<DataPacket *>(&buffer);
-        qDebug() << "received seq: " << data->seqNum;
-
-        if(data->packetType == ACK)
-        {
-            disconnect(sock, SIGNAL(readyReady()), this, SLOT(recvData()));
-            connect(sock, SIGNAL(readyRead()), this, SLOT(recvDataAck()));
-            transferMode = true;
-            sendNPackets();
-            break;
-        }
 
 
-        if((data->packetType & DATA) == DATA && data->seqNum == expectSeq)
-        {
-            receiveTimer->stop();
-            recvFile->write(data->data, PAYLOADLEN);
-            ControlPacket ack;
-            ack.packetType = ACK;
-            ack.ackNum = ++expectSeq;
-            qDebug() << "           expected seq: " << expectSeq;
-            sock->writeDatagram(reinterpret_cast<char *>(&ack), sizeof(ControlPacket), *destAddress, destPort);
-            if(expectSeq == data->windowSize)
-            {
-                if((data->packetType & FIN) == FIN)
-                {
-                    recvFile->close();
-                }
-                expectSeq = 0;
-                emit(beginContention());
-                break;
-            }
-            if((data->packetType & FIN) == FIN )
-            {
-                recvFile->close();
-                expectSeq = 0;
-                emit(beginContention());
-            }
-            else
-            {
-                receiveTimer->start(TIMEOUT);
-            }
-        }
-
-
-    }
-}
-
-void Transport::recvDataAck()
-{
-    char buffer[HEADERLEN + PAYLOADLEN];
-    while(sock->hasPendingDatagrams())
-    {
-        sock->readDatagram(buffer, HEADERLEN + PAYLOADLEN);
-        ControlPacket* con = reinterpret_cast<ControlPacket *>(buffer);
-        qDebug() << "wating for ack " << (*windowStart)->seqNum+1;
-        qDebug() << "       received ack " << con->ackNum;
-        if(con->packetType == ACK )
-        {
-            if(con->ackNum >= (*windowStart)->seqNum+1)
-            {
-                qDebug() << "in recvDataAck got " << con->ackNum;
-                sendTimer->stop();
-                emit(packetRecv(con->ackNum, ACK));
-                delete *windowStart;
-                ++windowStart;
-                timeQueue.dequeue();
-                if(windowStart == windowEnd)
-                {
-                    // TODO add weird logic here
-                    windowStart = windowEnd = sendWindow;
-                    emit(beginContention());
-                    break;
-                }
-                sendPacket();
-                sendTimer->start(TIMEOUT - timeQueue.head().msecsTo(QTime::currentTime()));
-            }
-            if(con->ackNum == 0 && windowEnd - sendWindow == windowSize)
-            {
-                sendTimer->stop();
-                timeQueue.clear();
-                int start = static_cast<int>(windowStart - sendWindow);
-                int end = static_cast<int>(windowEnd - sendWindow);
-                qDebug () << "retransmiting from:" << start << " to " << end;
-                for(int i = start; i < end; ++i)
-                {
-                    delete sendWindow[i];
-                }
-                windowStart = windowEnd = sendWindow;
-                emit(beginReset());
-                sendNPackets();
-            }
-        }
-
-
-
-
-    }
-}
-
+// Called when the send timer elapses. If in transfer mode, retransmit the current window, else resend urg.
 void Transport::sendTimeOut()
 {
     qDebug() << "send timeout";
@@ -294,6 +138,7 @@ void Transport::sendTimeOut()
     }
 }
 
+// Called when receive timer elaspes. Resends an ack with the expected seq number
 void Transport::recvTimeOut()
 {
     qDebug() << "recv timeout sending ack" << expectSeq;
@@ -302,6 +147,7 @@ void Transport::recvTimeOut()
     receiveTimer->start(TIMEOUT);
 }
 
+// Retransmits the current send window from window start to window end.
 void Transport::retransmit()
 {
     timeQueue.clear();
@@ -326,6 +172,8 @@ void Transport::retransmit()
 
 }
 
+// Called when the begin contention signal is emited. If the client was in transfer mode, wait for contention.
+// Else, send a URG request if there is file to send and wait.
 void Transport::contention()
 {
     qDebug() <<"contention has begun";
@@ -333,16 +181,12 @@ void Transport::contention()
     receiveTimer->stop();
     if(transferMode)
     {
-        //disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvDataAck()));
-        //connect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
+
         contendTimer->start(TIMEOUT + 1500);
     }
     else
     {
-        //if receiver has data to send, send request
-        //else wait for more data
-        //disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvData()));
-        //connect(sock, SIGNAL(readyRead()), this, SLOT(recvURGResponse()));
+
         if(sendFile != nullptr && !sendFile->atEnd())
         {
             sendingMachine = true;
@@ -353,6 +197,9 @@ void Transport::contention()
     }
 }
 
+// Called when the contention timer elapses. If the client was in transfer mode, send half the window size of packets,
+// else, start the receive timer again. If the sendfile is not set or at the end and the receive file is closed then
+// everything is finished.
 void Transport::contentionTimeOut()
 {
     qDebug() << "contention timeout";
@@ -361,15 +208,11 @@ void Transport::contentionTimeOut()
         if(!sendFile->atEnd())
         {   qDebug() << "starting to send n packets again";
             emit(beginReset());
-            //disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
-            //connect(sock, SIGNAL(readyRead()), this, SLOT(recvDataAck()));
             sendNPackets();
         }
     }
     else
     {
-        //disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvURGResponse()));
-        //connect(sock, SIGNAL(readyRead()), this, SLOT(recvData()));
         qDebug() << "starting recv timer again";
         receiveTimer->start(TIMEOUT);
         sendingMachine = false;
@@ -380,9 +223,6 @@ void Transport::contentionTimeOut()
         if(!recvFile->isOpen())
         {
             qDebug() << "ready to close everything";
-            //disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvData()));
-            //disconnect(sock, SIGNAL(readyRead()), this, SLOT(recvDataAck()));
-            //connect(sock, SIGNAL(readyRead()), this, SLOT(recvURG()));
             receiveTimer->stop();
             sendTimer->stop();
             emit(finished());
@@ -390,6 +230,8 @@ void Transport::contentionTimeOut()
     }
 }
 
+// Called when the socket receives data. Depending on the size, the packet is a DATA packet or a Control packet.
+// Performs different tasks if the client is a sending machine or not.
 void Transport::recvPacket()
 {
     char buffer[HEADERLEN + PAYLOADLEN];
@@ -428,6 +270,8 @@ void Transport::recvPacket()
     }
 }
 
+// Handles control packets if the client is the sender. If an ack is received and the sender is not transfering, start
+// transfering. If transfering and the expected ack is received, send more packets.
 void Transport::senderHandleControl(ControlPacket *con)
 {
     emit(packetRecv(con->ackNum, ACK));
@@ -443,13 +287,13 @@ void Transport::senderHandleControl(ControlPacket *con)
             {
                 delete *windowStart;
                 ++windowStart;
+                timeQueue.dequeue();
             }
 
-            timeQueue.dequeue();
+
             sendNPackets();
             if(windowStart == windowEnd)
             {
-                // TODO add weird logic here
                 windowStart = windowEnd = sendWindow;
                 emit(beginContention());
                 return;
@@ -468,7 +312,6 @@ void Transport::senderHandleControl(ControlPacket *con)
             int start = static_cast<int>(windowStart - sendWindow);
             int end = static_cast<int>(windowEnd - sendWindow);
             qDebug () << "got ack 0 while ";
-            //emit(packetRecv(con->ackNum,ACK));
             for(int i = start; i < end; ++i)
             {
                 delete sendWindow[i];
@@ -481,7 +324,6 @@ void Transport::senderHandleControl(ControlPacket *con)
     else
     {
         qDebug() << "recived: urg ack";
-        //emit(packetRecv(con->ackNum, ACK));
         sendTimer->stop();
         contendTimer->stop();
         transferMode = true;
@@ -489,6 +331,7 @@ void Transport::senderHandleControl(ControlPacket *con)
     }
 }
 
+// If the sender receives an URG packet, start receiving data.
 void Transport::senderHandleData(DataPacket *data)
 {
     if(data->packetType == URG )
@@ -504,12 +347,15 @@ void Transport::senderHandleData(DataPacket *data)
             recvFile->setFileName(name.insert(0,'1'));
             recvFile->open(QIODevice::WriteOnly | QIODevice::Text);
         }
+        emit(packetRecv(-1, URG));
         sendAckPack(0);
+        emit(packetSent(0, ACK));
+
         receiveTimer->start(TIMEOUT);
     }
 }
 
-
+// If the receiver receives an ACK packet, start sending packets
 void Transport::receiverHandleControl(ControlPacket *con)
 {
     if(con->packetType == ACK)
@@ -521,6 +367,9 @@ void Transport::receiverHandleControl(ControlPacket *con)
     }
 }
 
+// If the receiver gets an URG packet, start the open the receive file, send an ack and start the receive timer.
+// If the receiver gets a DATA packet and the sequence number matches the expected sequence, write the packet to
+// the receive file.
 void Transport::receiverHandleData(DataPacket *data)
 {
     if(data->packetType == URG)
@@ -539,6 +388,7 @@ void Transport::receiverHandleData(DataPacket *data)
         sendAckPack(0);
         emit(packetSent(0, ACK));
         receiveTimer->start(TIMEOUT);
+        return;
     }
     qDebug() << "received data: " <<data->seqNum;
     if((data->packetType & DATA) == DATA && data->seqNum == expectSeq)
@@ -570,6 +420,7 @@ void Transport::receiverHandleData(DataPacket *data)
     }
 }
 
+// Generates an ACK packet and sends it
 void Transport::sendAckPack(int ackNum)
 {
     qDebug() << "sending ack";
