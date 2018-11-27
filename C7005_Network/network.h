@@ -53,6 +53,7 @@ private:
     QTimer toMac01Timer, toMac02Timer;
     QQueue<char *> toMac01Queue, toMac02Queue;
     QQueue<long long> toMac01PacketSize, toMac02PacketSize;
+    unsigned int toMac01Forwarded, toMac01Dropped, toMac02Forwarded, toMac02Dropped;
 
 
 

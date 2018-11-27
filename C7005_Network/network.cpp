@@ -83,6 +83,11 @@ void Network::listen()
     isListen = !isListen;
     if(isListen)
     {
+        toMac01Forwarded = toMac01Dropped = toMac02Forwarded = toMac02Dropped = 0;
+        ui->lineEdit_toMac01F->setText(QString::number(0));
+        ui->lineEdit_toMac01D->setText(QString::number(0));
+        ui->lineEdit_toMac02F->setText(QString::number(0));
+        ui->lineEdit_toMac02D->setText("0");
         ui->pushButton->setText("Stop");
         delay = ui->lineEdit_Delay->text().toInt();        QHostAddress networkAddr(ui->lineEdit_net_ip->text());
         mac01IP.setAddress(ui->lineEdit_mac01_ip->text());
@@ -140,6 +145,10 @@ void Network::sendToMac01()
             }
 
         }
+        else
+        {
+            ui->lineEdit_toMac01D->setText(QString::number(++toMac01Dropped));
+        }
     }
 }
 
@@ -162,6 +171,10 @@ void Network::sendToMac02()
                 toMac02Timer.start(delay);
             }
         }
+        else
+        {
+            ui->lineEdit_toMac02D->setText(QString::number(++toMac02Dropped));
+        }
     }
 }
 
@@ -172,6 +185,7 @@ void Network::toMac01DelayOver()
     fromMac02->writeDatagram(packet,bytesToSend, mac01IP, mac01Port);
     qDebug() << "sending to machine 1";
     delete packet;
+    ui->lineEdit_toMac01F->setText(QString::number(++toMac01Forwarded));
     if(!toMac01Queue.isEmpty())
     {
         toMac01Timer.start(delay);
@@ -184,6 +198,7 @@ void Network::toMac02DelayOver()
     char *packet = toMac02Queue.dequeue();
     long long bytesToSend = toMac02PacketSize.dequeue();
     fromMac01->writeDatagram(packet,bytesToSend, mac02IP, mac02Port);
+    ui->lineEdit_toMac02F->setText(QString::number(++toMac02Forwarded));
     qDebug() << "sending to machine 2";
     delete packet;
     if(!toMac02Queue.isEmpty())
