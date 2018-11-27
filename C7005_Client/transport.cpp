@@ -563,6 +563,10 @@ void Transport::receiverHandleData(DataPacket *data)
             receiveTimer->start(TIMEOUT);
         }
     }
+    else
+    {
+        emit(packetRecv(data->seqNum, DATA));
+    }
 }
 
 void Transport::sendAckPack(int ackNum)
