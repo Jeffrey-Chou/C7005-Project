@@ -430,6 +430,7 @@ void Transport::recvPacket()
 
 void Transport::senderHandleControl(ControlPacket *con)
 {
+    emit(packetRecv(con->ackNum, ACK));
     if(transferMode)
     {
         qDebug() << "transfer mode recived: ack" << con->ackNum;
@@ -437,7 +438,7 @@ void Transport::senderHandleControl(ControlPacket *con)
         {
             qDebug() << "in recvDataAck got " << con->ackNum;
             sendTimer->stop();
-            emit(packetRecv(con->ackNum, ACK));
+
             while(windowStart != windowEnd && (*windowStart)->seqNum+1 <= con->ackNum)
             {
                 delete *windowStart;
@@ -467,7 +468,7 @@ void Transport::senderHandleControl(ControlPacket *con)
             int start = static_cast<int>(windowStart - sendWindow);
             int end = static_cast<int>(windowEnd - sendWindow);
             qDebug () << "got ack 0 while ";
-            emit(packetRecv(con->ackNum,ACK));
+            //emit(packetRecv(con->ackNum,ACK));
             for(int i = start; i < end; ++i)
             {
                 delete sendWindow[i];
@@ -480,7 +481,7 @@ void Transport::senderHandleControl(ControlPacket *con)
     else
     {
         qDebug() << "recived: urg ack";
-        emit(packetRecv(con->ackNum, ACK));
+        //emit(packetRecv(con->ackNum, ACK));
         sendTimer->stop();
         contendTimer->stop();
         transferMode = true;

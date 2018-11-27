@@ -81,7 +81,7 @@ void TransportDebug::addSentPack(int index, int type)
     switchOnType(type, message);
     if(index >= 0)
     {
-        if(type == DATA)
+        if(type == DATA || type == DATA + FIN)
             window[index]->setStyleSheet(styleSent);
         message.append(QString::number(index));
     }
