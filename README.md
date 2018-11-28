@@ -1,0 +1,2 @@
+# COMP 7005 Final Project
+The COMP 7005 final project objective was to implement a half-duplex Stop-And-Wait protocol that can function in an unreliable network. The protocol needed to use UDP and also needed to use sliding windows to allow multiple packets to be sent. This project was written in C++ using the Qt framework and the window uses the Go-Back-N protocol.
